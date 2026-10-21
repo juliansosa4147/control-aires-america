@@ -356,4 +356,13 @@ async function consumeStockForRequest(r){
  return {ok:missing.length===0,missing};
 }
 </script>
+<style>
+/* La barra lateral conserva el fondo oscuro hasta el final y acompaña el alto de la página */
+html,body{min-height:100%;}
+.app{min-height:100vh;align-items:stretch;background:var(--bg);}
+.side{align-self:stretch;min-height:100vh;height:100vh;position:sticky;top:0;box-sizing:border-box;background:#17242e!important;color:#dbe5f5;border-right:1px solid #2b3b47;}
+.sideSummary{flex:0 0 auto;}
+.side .sideFoot{margin-top:auto;position:static;padding-top:14px;}
+@media(max-width:1000px){.app{min-height:100vh}.side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;min-height:0;align-self:auto;border-right:0;border-top:1px solid #2b3b47}.side .sideFoot{display:none}}
+</style>
 </body></html>
