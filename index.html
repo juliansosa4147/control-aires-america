@@ -397,7 +397,7 @@ html,body{min-height:100%;}
 @media(max-width:1000px){.app{min-height:100vh}.side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;min-height:0;align-self:auto;border-right:0;border-top:1px solid #2b3b47}.side .sideFoot{display:none}}
 </style>
 
-<div id="authGate" role="dialog" aria-modal="true" aria-labelledby="authGateTitle" style="display:flex">
+<div id="authGate" role="dialog" aria-modal="true" aria-labelledby="authGateTitle" style="display:none">
   <div class="authGateCard">
     <div class="authMascot" aria-hidden="true"><span class="mascotSnow">❄</span><span class="mascotPenguin">🐧</span><span class="mascotSpark">✦</span></div>
     <div class="authGateIcon" aria-hidden="true">❄️</div>
@@ -470,7 +470,119 @@ button:active,.btn:active{transform:translateY(1px) scale(.985)}
 @media(prefers-reduced-motion:reduce){.authGateIcon,.welcomeBreeze{animation:none!important}}
 </style>
 <script>
-function updateAuthGate(session){const gate=document.getElementById('authGate');if(!gate)return;const allowed=!!session?.user;gate.style.display=allowed?'none':'flex';document.body.classList.toggle('auth-locked',!allowed);if(!allowed){const lm=document.getElementById('loginModal');if(lm)lm.classList.remove('show');}}
+function updateAuthGate(session){
+  const gate=document.getElementById('authGate');
+  if(!gate)return;
+  const allowed=!!session?.user;
+  gate.style.display=allowed?'none':'flex';
+  document.body.classList.toggle('auth-locked',!allowed);
+  if(!allowed){
+    const lm=document.getElementById('loginModal');
+    if(lm)lm.classList.remove('show');
+  }
+}
+/* La pantalla de acceso se agrega al final del HTML, después del arranque principal.
+   Volvemos a consultar la sesión cuando el elemento ya existe para ocultarla si la
+   sesión de Supabase sigue activa. */
+(async function syncAuthGateAfterRender(){
+  try{
+    if(typeof refreshAuthUI==='function'){
+      await refreshAuthUI();
+    }else if(typeof sb!=='undefined' && sb){
+      const {data:{session}}=await sb.auth.getSession();
+      updateAuthGate(session);
+    }else{
+      updateAuthGate(null);
+    }
+  }catch(error){
+    console.error('No se pudo verificar la sesión al mostrar el acceso:',error);
+    updateAuthGate(null);
+  }
+})();
 </script>
+
+
+<style id="fit-all-tables-to-page">
+/* Ajuste final: las tablas se adaptan al ancho disponible sin ensanchar la página. */
+html, body, .app, .main, .panel, .inventoryPanel {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.main { overflow-x: clip; }
+.tableWrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+table.table,
+.tableWrap .table,
+.stockTable {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.table th, .table td {
+  min-width: 0 !important;
+  padding: 8px 7px !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.table th {
+  font-size: 9px;
+  letter-spacing: .02em;
+}
+.table td .badge,
+.table td .stockStatus {
+  white-space: normal;
+  max-width: 100%;
+  text-align: center;
+}
+.table th:last-child, .table td:last-child {
+  position: static;
+  min-width: 0 !important;
+  white-space: normal;
+  box-shadow: none;
+}
+#rows td:first-child, #rows th:first-child { width: 30px; }
+#rows td:nth-child(2), #rows th:nth-child(2) { width: 17%; }
+#rows td:nth-child(3), #rows th:nth-child(3) { width: 18%; }
+#rows td:nth-child(4), #rows th:nth-child(4) { width: 17%; }
+#rows td:nth-child(5), #rows th:nth-child(5) { width: 15%; }
+#rows td:nth-child(6), #rows th:nth-child(6) { width: 13%; }
+#rows td:last-child, #rows th:last-child { width: 68px; }
+.stockTable th:nth-child(1), .stockTable td:nth-child(1) { width: 20%; }
+.stockTable th:nth-child(2), .stockTable td:nth-child(2) { width: 12%; }
+.stockTable th:nth-child(3), .stockTable td:nth-child(3) { width: 10%; }
+.stockTable th:nth-child(4), .stockTable td:nth-child(4) { width: 9%; }
+.stockTable th:nth-child(5), .stockTable td:nth-child(5) { width: 14%; }
+.stockTable th:nth-child(6), .stockTable td:nth-child(6) { width: 15%; }
+.stockTable th:nth-child(7), .stockTable td:nth-child(7) { width: 20%; }
+.stockRowActions { gap: 4px; min-width: 0 !important; }
+.stockRowActions .miniBtn { font-size: 10px; padding: 5px 6px; }
+@media (max-width: 1000px) {
+  .tableWrap { overflow-x: hidden !important; }
+  .table th, .table td { padding: 7px 5px !important; font-size: 10px; }
+  .table th { font-size: 8px; }
+  #rows td:first-child, #rows th:first-child { width: 24px; }
+  #rows td:last-child, #rows th:last-child { width: 58px; }
+  .table td button { max-width: 100%; white-space: normal; padding: 6px 7px; font-size: 10px; }
+}
+@media (max-width: 650px) {
+  .table th, .table td { padding: 6px 4px !important; font-size: 9px; }
+  .table th { font-size: 7px; letter-spacing: 0; }
+  #rows td:first-child, #rows th:first-child { width: 20px; }
+  #rows td:last-child, #rows th:last-child { width: 52px; }
+  .stockTable th, .stockTable td { padding: 6px 3px !important; font-size: 8px; }
+  .stockTable th { font-size: 7px; }
+  .stockRowActions .miniBtn { font-size: 8px; padding: 4px 3px; }
+}
+</style>
 
 </body></html>
