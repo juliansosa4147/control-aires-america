@@ -308,15 +308,38 @@ function updateAssignmentProgress(assignmentId){const card=document.getElementBy
 async function startAssignedTask(id){if(!sb)return;const {data:{session}}=await sb.auth.getSession();if(!session){alert('Iniciá sesión para actualizar la tarea.');return}const {error}=await sb.from('maintenance_assignments').update({status:'in_progress',updated_at:new Date().toISOString()}).eq('id',id).eq('technician_email',(session.user.email||'').toLowerCase());if(error){alert('No se pudo actualizar el estado de la tarea: '+error.message);return}await loadMyAssignments();if(typeof loadAssignments==='function'&&isAdmin)await loadAssignments();toast('Tarea marcada como EN CURSO')}
 let techAssignmentsCache=[];
 let techCalendarWeekOffset=0;
-let techCalendarFilter='all';
+let techCalendarFilter='auto';
 function localISODate(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
 function shiftDate(date,days){const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+days);return d}
 function techDateLabel(date,opts={weekday:'long',day:'numeric',month:'long'}){if(!date)return 'Sin fecha';return new Date(date+'T12:00:00').toLocaleDateString('es-AR',opts)}
 function setTechCalendarFilter(filter){techCalendarFilter=filter;renderTechAssignmentsCalendar()}
+function techWeekOffsetForDate(date){
+ const target=new Date(date+'T12:00:00');
+ const today=new Date();today.setHours(12,0,0,0);
+ const targetMonday=new Date(target.getFullYear(),target.getMonth(),target.getDate());
+ targetMonday.setDate(targetMonday.getDate()-((targetMonday.getDay()+6)%7));
+ const todayMonday=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+ todayMonday.setDate(todayMonday.getDate()-((todayMonday.getDay()+6)%7));
+ return Math.round((targetMonday-todayMonday)/604800000);
+}
+function chooseInitialTechDate(rows,today){
+ const dated=rows.filter(a=>a.due_date).map(a=>String(a.due_date)).sort();
+ if(rows.some(a=>a.due_date===today))return today;
+ const next=dated.find(d=>d>today);
+ if(next)return next;
+ if(dated.length)return dated[dated.length-1]; // Si solo hay tareas vencidas, mostrar la más próxima a hoy.
+ if(rows.some(a=>!a.due_date))return 'nodate';
+ return today;
+}
 function shiftTechCalendar(delta){techCalendarWeekOffset+=delta;techCalendarFilter='all';renderTechAssignmentsCalendar()}
 function renderTechAssignmentsCalendar(){
  const box=document.getElementById('myAssignments');if(!box)return;
  const rows=techAssignmentsCache;const today=localISODate(new Date());
+ // Al entrar por primera vez, enfocar hoy; si no hay tareas hoy, la fecha futura más cercana.
+ if(techCalendarFilter==='auto'){
+  techCalendarFilter=chooseInitialTechDate(rows,today);
+  techCalendarWeekOffset=techCalendarFilter==='nodate'?0:techWeekOffsetForDate(techCalendarFilter);
+ }
  const now=new Date();const monday=new Date(now.getFullYear(),now.getMonth(),now.getDate());const day=(monday.getDay()+6)%7;monday.setDate(monday.getDate()-day+techCalendarWeekOffset*7);
  const weekDates=Array.from({length:7},(_,i)=>localISODate(new Date(monday.getFullYear(),monday.getMonth(),monday.getDate()+i)));
  const countFor=d=>rows.filter(a=>a.due_date===d).length;
@@ -332,7 +355,7 @@ function renderTechAssignmentsCalendar(){
  const taskMarkup=visible.map(a=>{const ids=a.equipment_ids||[];const names=ids.map(id=>{const x=data.find(z=>String(z.id)===String(id));if(!x)return `<div class="assignedTaskEquipment">Equipo ${esc(id)}</div>`;const photos=getTechPhotoDraft(a.id,id);if(!maintTasks[id])maintTasks[id]={};if(photos.length)maintTasks[id].photos=photos;return `<div class="assignedTaskEquipment" style="padding:10px 0;border-bottom:1px solid #e5edf4"><label class="check" style="display:block;margin:4px 0"><input type="checkbox" class="assignedEquipCheck" data-assignment="${esc(a.id)}" data-id="${esc(id)}" onchange="toggleAssignedEquipment(this)"> <b>${esc(x.code||x.place)}</b> · ${esc(x.place||'')} <span class="muted">${esc(x.building||x.section||'')}</span></label><div class="taskPhotoBox"><b>📷 Fotos de este aire</b><div class="detail">Cargá las fotos mientras trabajás. Las imágenes se guardan en Supabase.</div><input type="file" id="taskPhotoInput-${esc(a.id)}-${esc(id)}" accept="image/*" multiple style="display:none" onchange="uploadTaskPhotos('${esc(a.id)}','${esc(id)}',this)"><div class="taskPhotoControls"><button type="button" class="maintPhotoButton" onclick="activeAssignmentId='${esc(a.id)}';document.getElementById('taskPhotoInput-${esc(a.id)}-${esc(id)}').click()">＋ Tomar / elegir foto</button><span class="detail">${photos.length} foto(s) guardadas</span></div><div class="maintPhotoPreview">${photos.map((u,i)=>`<span class="maintPhotoThumb"><a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto de ${esc(x.place||'equipo')}"></a><button type="button" class="photoRemoveBtn" onclick="activeAssignmentId='${esc(a.id)}';removeMaintenancePhoto('${esc(id)}',${i})" title="Quitar foto">✕</button></span>`).join('')}</div></div></div>`}).join('');return `<div class="approvalItem" id="assignment-card-${esc(a.id)}"><div class="approvalTop"><div><b>🧰 ${esc(a.work||'Mantenimiento')}</b><div class="detail">${esc(a.technician_email||currentSessionEmail)}</div><span class="techTaskDue">📅 ${esc(a.due_date?techDateLabel(a.due_date):'Sin fecha límite')}</span></div><span class="approvalBadge">${a.due_date&&a.due_date<today?'VENCIDO':a.status==='in_progress'?'EN CURSO':'ASIGNADO'}</span></div><div class="detail" style="margin:8px 0">${esc(a.notes||'Sin indicaciones adicionales')}</div><div class="approvalEquip">${names||'No hay equipos en esta tarea'}</div><div class="taskCardActions"><button class="ghost" type="button" onclick="startAssignedTask('${esc(a.id)}')">▶ Iniciar trabajo</button><button class="primary" type="button" onclick="selectAssignedAndReport('${esc(a.id)}')">✓ Seleccionar aires para informar</button></div></div>`}).join('');
  box.innerHTML=`<div class="techCalendar"><div class="techCalendarTop"><strong>🗓 Agenda semanal</strong><div class="techCalendarNav"><button type="button" onclick="shiftTechCalendar(-1)" aria-label="Semana anterior">‹</button><span style="font-size:12px;font-weight:800">${weekLabel}</span><button type="button" onclick="shiftTechCalendar(1)" aria-label="Semana siguiente">›</button><button type="button" onclick="techCalendarWeekOffset=0;techCalendarFilter='all';renderTechAssignmentsCalendar()">Esta semana</button></div></div><div class="techCalendarGrid">${days}</div><div class="techCalendarFilters">${filterButtons}</div></div><div class="techCalendarResults"><div class="techCalendarResultsHead"><h3>${esc(title)}</h3><span>${visible.length} trabajo(s)</span></div>${taskMarkup||'<div class="techNoTasks">No hay trabajos para esta fecha o filtro. Elegí otro día o revisá las semanas siguientes.</div>'}</div>`;
 }
-async function loadMyAssignments(){if(!sb)return;const {data:{session}}=await sb.auth.getSession();const box=document.getElementById('myAssignments');if(!box)return;if(!session){techAssignmentsCache=[];box.innerHTML='<div class="detail">Iniciá sesión para ver tus trabajos programados.</div>';return}currentSessionEmail=(session.user.email||'').toLowerCase();const {data:rows,error}=await sb.from('maintenance_assignments').select('*').eq('technician_email',currentSessionEmail).in('status',['assigned','in_progress']).order('due_date',{ascending:true}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="detail">No se pudieron cargar tus tareas. Aplicá el SQL de configuración: '+esc(error.message)+'</div>';return}techAssignmentsCache=rows||[];renderTechAssignmentsCalendar()}
+async function loadMyAssignments(){if(!sb)return;const {data:{session}}=await sb.auth.getSession();const box=document.getElementById('myAssignments');if(!box)return;if(!session){techAssignmentsCache=[];techCalendarFilter='auto';techCalendarWeekOffset=0;box.innerHTML='<div class="detail">Iniciá sesión para ver tus trabajos programados.</div>';return}currentSessionEmail=(session.user.email||'').toLowerCase();const {data:rows,error}=await sb.from('maintenance_assignments').select('*').eq('technician_email',currentSessionEmail).in('status',['assigned','in_progress']).order('due_date',{ascending:true}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="detail">No se pudieron cargar tus tareas. Aplicá el SQL de configuración: '+esc(error.message)+'</div>';return}techAssignmentsCache=rows||[];renderTechAssignmentsCalendar()}
 
 function toggleAssignedEquipment(el){if(el.checked)selected.add(el.dataset.id);else selected.delete(el.dataset.id);updateSelectionInfo();document.querySelectorAll('.maintCheck').forEach(c=>c.checked=selected.has(c.dataset.id))}
 function selectAssignedAndReport(id){activeAssignmentId=id;document.querySelectorAll('.assignedEquipCheck:checked').forEach(c=>{if(c.dataset.assignment===id){selected.add(c.dataset.id);if(!maintTasks[c.dataset.id])maintTasks[c.dataset.id]={};const saved=getTechPhotoDraft(id,c.dataset.id);if(saved.length)maintTasks[c.dataset.id].photos=saved;}});if(!selected.size){alert('Marcá al menos un equipo de esta tarea.');return}updateSelectionInfo();openMaintenance()}
