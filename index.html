@@ -139,10 +139,35 @@ html,body{max-width:100%;overflow-x:hidden}
 .techTaskDue{display:inline-block;margin-top:6px;border-radius:6px;padding:4px 7px;background:#e8f5f5;color:#087e8b;font-size:10px;font-weight:800}
 @media(max-width:650px){.techCalendarGrid{grid-template-columns:repeat(4,minmax(0,1fr))}.techDay{min-height:70px}.techDay .techDayNum{font-size:18px}}
 </style>
+<style id="maintenance-reports-styles">
+.main.reports-view>:not(#reportsPanel){display:none!important}
+.main.reports-view #reportsPanel{display:block!important;margin:0;min-height:70vh}
+.reportsPanel{overflow:hidden}
+.reportsHero{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:23px 24px;background:linear-gradient(115deg,#172832,#203c45);color:#f4fbfc}
+.reportsHero .eyebrow{color:#69d2ce}.reportsHero h2{font-size:24px;margin:5px 0}.reportsHero p{color:#c1d1d7;margin:0;max-width:760px;line-height:1.5}
+.reportsRefresh{background:#087e8b;color:#fff;border-radius:8px;padding:10px 13px;font-weight:800;white-space:nowrap}
+.reportsTools{display:flex;gap:10px;flex-wrap:wrap;padding:15px 18px;background:#fff;border-bottom:1px solid var(--line)}
+.reportsTools input,.reportsTools select{border:1px solid #d7e0e5;border-radius:9px;padding:11px;background:#fff;color:var(--ink);font:inherit}
+.reportsTools input{flex:1;min-width:220px}.reportsTools select{min-width:150px}
+.reportsSummary{padding:12px 18px;background:#f8fafb;color:#526572;font-size:12px;border-bottom:1px solid var(--line)}
+.reportsContent{padding:16px 18px}
+.reportMonth{border:1px solid #dce4e9;border-radius:12px;overflow:hidden;margin-bottom:14px;background:#fff}
+.reportMonthHead{padding:12px 15px;background:#edf4f6;font-weight:850;color:#203642;display:flex;justify-content:space-between;gap:10px}
+.reportEntry{padding:14px 15px;border-top:1px solid #e8eef1}
+.reportEntryHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.reportDate{font-size:14px;font-weight:850;color:#183441}.reportMeta{font-size:11px;color:#687b85;margin-top:4px}
+.reportStatus{background:#e5f6ee;color:#18754e;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:850}
+.reportEquipList{display:grid;gap:7px;margin-top:12px}
+.reportEquip{padding:10px 11px;border:1px solid #e1e9ed;border-radius:9px;background:#fbfdfe}
+.reportEquip strong{font-size:12px}.reportEquip .detail{margin-top:4px;line-height:1.45;white-space:pre-wrap}
+.reportPhotos{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.reportPhotos img{width:92px;height:72px;object-fit:cover;border:1px solid #dce4e9;border-radius:7px}
+.reportNotes{margin-top:10px;padding:10px 11px;background:#f4f8fa;border-radius:8px;font-size:12px;white-space:pre-wrap;line-height:1.5}
+@media(max-width:650px){.reportsHero{align-items:flex-start;flex-direction:column;padding:18px}.reportsHero h2{font-size:21px}.reportsTools{padding:12px}.reportsTools input,.reportsTools select{width:100%;min-width:0}.reportsContent{padding:10px}.reportEntry{padding:12px}.reportPhotos img{width:76px;height:62px}}
+</style>
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><div class="app">
-<aside class="side"><div class="brand"><div class="logo">❄</div><div><b>Control de Aires</b><small>América · Mantenimiento</small></div></div><div class="nav"><button id="navHome" class="active" onclick="showDashboard();scrollTopApp()">▦ &nbsp; Panel general</button><button id="navTechTasks" class="technicianOnly" style="display:none" onclick="openTechnicianTasks()">🗓 &nbsp; Trabajos programados</button><button id="navEquip" onclick="focusSearch()">⌕ &nbsp; Equipos</button><button id="navInventory" onclick="openInventory()">▤ &nbsp; Inventario <span id="stockBadge" class="stockNavBadge">!</span></button><button id="navHistory" onclick="openHistoryPage()">▧ &nbsp; Historiales</button><button id="navQR" onclick="openQRPage()">▦ &nbsp; Códigos QR</button><button id="navPending" onclick="openPending()">🧾 &nbsp; Recordatorios <span id="pendingBadge" style="display:inline-block;min-width:20px;text-align:center;background:#b91c1c;color:#fff;border-radius:999px;padding:2px 6px;font-size:10px;margin-left:4px">0</span></button><button class="adminOnly" onclick="newEquip()">＋ &nbsp; Nuevo equipo</button><button class="adminOnly" onclick="document.getElementById('file').click()">↥ &nbsp; Importar JSON</button><button class="adminOnly" onclick="exportJSON()">↧ &nbsp; Exportar respaldo</button></div><div class="sideSummary"><div class="sideSummaryTitle"><span>RESUMEN DEL ESTADO</span><span class="liveDot"></span></div><section class="cards"><div class="card"><div class="cardTop">Total equipos <span class="icon blue">▦</span></div><div class="num" id="total">0</div><div class="sub">registrados en el sistema</div></div><div class="card"><div class="cardTop">Al día <span class="icon green">✓</span></div><div class="num" id="ok">0</div><div class="sub">mantenimiento reciente</div></div><div class="card"><div class="cardTop">Revisión <span class="icon amber">!</span></div><div class="num" id="warn">0</div><div class="sub">más de 30 días</div></div><div class="card"><div class="cardTop">Atrasados <span class="icon red">!</span></div><div class="num" id="late">0</div><div class="sub">más de 60 días</div></div><div class="card"><div class="cardTop">Fuera servicio <span class="icon orange">×</span></div><div class="num" id="off">0</div><div class="sub">requieren reparación</div></div></section><section class="analytics">
+<aside class="side"><div class="brand"><div class="logo">❄</div><div><b>Control de Aires</b><small>América · Mantenimiento</small></div></div><div class="nav"><button id="navHome" class="active" onclick="showDashboard();scrollTopApp()">▦ &nbsp; Panel general</button><button id="navTechTasks" class="technicianOnly" style="display:none" onclick="openTechnicianTasks()">🗓 &nbsp; Trabajos programados</button><button id="navEquip" onclick="focusSearch()">⌕ &nbsp; Equipos</button><button id="navInventory" onclick="openInventory()">▤ &nbsp; Inventario <span id="stockBadge" class="stockNavBadge">!</span></button><button id="navHistory" onclick="openHistoryPage()">▧ &nbsp; Historiales</button><button id="navReports" class="adminOnly" onclick="openReportsPage()">📑 &nbsp; Informes</button><button id="navQR" onclick="openQRPage()">▦ &nbsp; Códigos QR</button><button id="navPending" onclick="openPending()">🧾 &nbsp; Recordatorios <span id="pendingBadge" style="display:inline-block;min-width:20px;text-align:center;background:#b91c1c;color:#fff;border-radius:999px;padding:2px 6px;font-size:10px;margin-left:4px">0</span></button><button class="adminOnly" onclick="newEquip()">＋ &nbsp; Nuevo equipo</button><button class="adminOnly" onclick="document.getElementById('file').click()">↥ &nbsp; Importar JSON</button><button class="adminOnly" onclick="exportJSON()">↧ &nbsp; Exportar respaldo</button></div><div class="sideSummary"><div class="sideSummaryTitle"><span>RESUMEN DEL ESTADO</span><span class="liveDot"></span></div><section class="cards"><div class="card"><div class="cardTop">Total equipos <span class="icon blue">▦</span></div><div class="num" id="total">0</div><div class="sub">registrados en el sistema</div></div><div class="card"><div class="cardTop">Al día <span class="icon green">✓</span></div><div class="num" id="ok">0</div><div class="sub">mantenimiento reciente</div></div><div class="card"><div class="cardTop">Revisión <span class="icon amber">!</span></div><div class="num" id="warn">0</div><div class="sub">más de 30 días</div></div><div class="card"><div class="cardTop">Atrasados <span class="icon red">!</span></div><div class="num" id="late">0</div><div class="sub">más de 60 días</div></div><div class="card"><div class="cardTop">Fuera servicio <span class="icon orange">×</span></div><div class="num" id="off">0</div><div class="sub">requieren reparación</div></div></section><section class="analytics">
 <div class="chartCard"><div class="chartTitle">Estado general</div><div class="chartSub">Distribución de los equipos</div><div class="donutWrap"><div class="donut" id="donut"><div class="donutCenter" id="donutTotal">0</div></div><div class="legend"><div class="legendRow"><span class="dot" style="background:var(--green)"></span> Al día <b id="legOk">0</b></div><div class="legendRow"><span class="dot" style="background:var(--amber)"></span> Revisión <b id="legWarn">0</b></div><div class="legendRow"><span class="dot" style="background:var(--red)"></span> Atrasados <b id="legLate">0</b></div><div class="legendRow"><span class="dot" style="background:var(--orange)"></span> Fuera de servicio <b id="legOff">0</b></div></div></div></div>
 <div class="chartCard"><div class="chartTitle">Equipos por marca</div><div class="chartSub">Las 8 marcas con más equipos</div><div class="barList" id="brandChart"></div></div>
 
@@ -155,6 +180,12 @@ html,body{max-width:100%;overflow-x:hidden}
 <section class="panel priorityAlertsPanel" id="priorityAlertsPanel"><div class="toolbar"><div><b>⚠ Alertas prioritarias de mantenimiento</b><div class="detail">Correas vencidas, filtros sin mantenimiento registrado y equipos atrasados.</div></div><span class="priorityCount" id="priorityAlertCount">0 alertas</span></div><div class="priorityAlertGrid" id="alertList"><div class="muted">Calculando alertas…</div></div></section>
 <section class="panel adminOnly" id="assignmentAdminPanel"><div class="toolbar"><div style="flex:1"><b>📋 Asignar trabajos a técnicos</b><div class="detail">Seleccioná los equipos en la tabla y asignales una tarea y una observación.</div></div><button class="primary" type="button" onclick="openAssignmentModal()">＋ Crear asignación</button><button class="ghost" type="button" onclick="loadAssignments()">↻ Actualizar</button></div><div id="adminAssignments" style="padding:0 14px 14px"><div class="detail">Las asignaciones aparecerán acá cuando esté aplicada la configuración de Supabase.</div></div></section>
 <section class="panel" id="technicianWelcome" style="display:none;border-left:4px solid #0d9488"><div class="toolbar"><div><b>👋 Acceso de técnico habilitado</b><div class="detail" id="technicianWelcomeText">Después de iniciar sesión, tus tareas asignadas aparecerán abajo.</div></div><button class="ghost" type="button" onclick="loadMyAssignments()">↻ Actualizar tareas</button></div></section>
+<section class="panel reportsPanel" id="reportsPanel" style="display:none">
+ <div class="reportsHero"><div><div class="eyebrow">REGISTRO DE TRABAJOS REALIZADOS</div><h2>Informes de mantenimiento</h2><p>Registro histórico de cada trabajo enviado por el técnico y aprobado por administración. Cada informe conserva la fecha, el técnico y todos los equipos atendidos.</p></div><button class="reportsRefresh" type="button" onclick="loadReports()">↻ Actualizar</button></div>
+ <div class="reportsTools"><input id="reportsSearch" type="search" placeholder="Buscar técnico, equipo, ubicación o trabajo…" oninput="renderReports()"><select id="reportsYear" onchange="renderReports()"><option value="all">Todos los años</option></select></div>
+ <div id="reportsSummary" class="reportsSummary"></div>
+ <div id="reportsContent" class="reportsContent"><div class="historyEmpty">Cargando informes aprobados…</div></div>
+</section>
 <section class="panel" id="technicianTasksPanel" style="display:none"><div class="toolbar"><div style="flex:1"><b>🧰 Mis tareas asignadas</b><div class="detail">Revisá las indicaciones, marcá los equipos que atendiste y enviá el mantenimiento a aprobación. También podés seleccionar otros equipos de la lista general.</div></div><button class="ghost" onclick="loadMyAssignments()">↻ Actualizar</button></div><div id="myAssignments" style="padding:0 14px 14px"><div class="detail">Iniciá sesión con tu cuenta de técnico para ver tus tareas.</div></div></section>
 <section class="panel inventoryPanel" id="inventoryPanel" style="display:none"><div class="inventoryHero"><div><div class="eyebrow">REPUESTOS Y CONSUMIBLES</div><h2>Inventario operativo</h2><p>Controlá existencias, registrá ingresos y detectá faltantes antes de que frenen un mantenimiento.</p></div><div class="inventoryHeroActions"><button class="stockBtn secondary" onclick="loadStock()">↻ Actualizar</button><button class="stockBtn adminOnly" onclick="openStockForm()">＋ Nuevo repuesto</button></div></div><div class="stockMetrics"><div><span>Ítems registrados</span><strong id="stockTotal">—</strong></div><div><span>Stock bajo</span><strong id="stockLow">—</strong></div><div><span>Unidades disponibles</span><strong id="stockUnits">—</strong></div></div><div id="stockAlerts" class="stockAlerts"></div><div class="stockToolbar"><input id="stockSearch" placeholder="Buscar repuesto, código o ubicación…" oninput="renderStock()"><select id="stockCategory" onchange="renderStock()"><option value="all">Todas las categorías</option><option value="Correas">Correas</option><option value="Filtros">Filtros</option><option value="Otros">Otros</option></select><span class="detail">Los consumos se registran al aprobar el trabajo.</span></div><div class="tableWrap"><table class="table stockTable"><thead><tr><th>Repuesto</th><th>Categoría</th><th>Disponible</th><th>Mínimo</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody id="stockRows"><tr><td colspan="7" class="empty">Cargando inventario…</td></tr></tbody></table></div><div class="stockFoot">El inventario se comparte entre administrador y técnicos. La configuración inicial de la base de datos se realiza una sola vez desde Supabase.</div></section>
 <div class="stockModal" id="stockModal"><div class="stockDialog"><div class="stockDialogHead"><div><div class="eyebrow">CATÁLOGO DE REPUESTOS</div><h3 id="stockFormTitle">Nuevo repuesto</h3></div><button class="stockClose" onclick="closeStockForm()">✕</button></div><input id="stockId" type="hidden"><div class="stockFormGrid"><label>Nombre / medida<input id="stockName" placeholder="Ej.: Correa A-42"></label><label>Categoría<select id="stockCat"><option>Correas</option><option>Filtros</option><option>Otros</option></select></label><label>Código / SKU<input id="stockSku" placeholder="Opcional"></label><label>Unidad<input id="stockUnit" value="unidad" placeholder="unidad, caja, metro…"></label><label>Existencia actual<input id="stockQty" type="number" min="0" step="0.01" value="0"></label><label>Stock mínimo<input id="stockMin" type="number" min="0" step="0.01" value="1"></label><label>Ubicación<input id="stockLocation" placeholder="Depósito, estante…"></label><label class="wide">Observaciones<textarea id="stockNotes" rows="2"></textarea></label></div><div class="stockDialogFoot"><button class="stockBtn secondary" onclick="closeStockForm()">Cancelar</button><button class="stockBtn" onclick="saveStockItem()">Guardar repuesto</button></div></div></div>
@@ -361,7 +392,7 @@ function toggleAssignedEquipment(el){if(el.checked)selected.add(el.dataset.id);e
 function selectAssignedAndReport(id){activeAssignmentId=id;document.querySelectorAll('.assignedEquipCheck:checked').forEach(c=>{if(c.dataset.assignment===id){selected.add(c.dataset.id);if(!maintTasks[c.dataset.id])maintTasks[c.dataset.id]={};const saved=getTechPhotoDraft(id,c.dataset.id);if(saved.length)maintTasks[c.dataset.id].photos=saved;}});if(!selected.size){alert('Marcá al menos un equipo de esta tarea.');return}updateSelectionInfo();openMaintenance()}
 let pendingItemsCache=[];
 let qrRenderedIds=[];function openQRPage(){clearMainViews();const m=document.querySelector('.main');if(m)m.classList.add('qr-view');setActiveNav('navQR');renderQRLabels();window.scrollTo({top:0,behavior:'smooth'})}function qrTargetUrl(id){const u=new URL('https://juliansosa4147.github.io/control-aires-america/');u.searchParams.set('equipo',String(id));return u.toString()}function renderQRLabels(){const grid=document.getElementById('qrGrid');if(!grid)return;const q=(document.getElementById('qrSearch')?.value||'').toLowerCase().trim();const items=(data||[]).filter(x=>[x.id,x.code,x.place,x.brand,x.model,x.building,x.section].some(v=>String(v||'').toLowerCase().includes(q)));qrRenderedIds=items.map(x=>String(x.id));const count=document.getElementById('qrCount');if(count)count.textContent=items.length+' equipo(s) · cada QR conserva el ID existente';grid.innerHTML=items.length?items.map((x,i)=>`<article class="qrLabel"><strong>${esc(x.code||('Equipo '+x.id))}</strong><div class="qrPlace">${esc(x.place||'Ubicación sin indicar')}<br>${esc([x.brand,x.model,x.capacity].filter(Boolean).join(' · '))}</div><div class="qrCode" id="qrCode-${i}"></div><div class="qrHint">Escaneá para abrir la ficha y registrar el mantenimiento</div><div class="qrActions"><button class="miniBtn" type="button" onclick="openEquipmentFromQR(decodeURIComponent('${encodeURIComponent(String(x.id))}'))">Abrir ficha</button></div></article>`).join(''):'<div class="detail">No hay equipos para esa búsqueda.</div>';if(typeof QRCode==='undefined'){grid.insertAdjacentHTML('afterbegin','<div class="detail" style="grid-column:1/-1">No se pudo cargar el generador QR. Revisá la conexión a internet y actualizá.</div>');return}items.forEach((x,i)=>{const el=document.getElementById('qrCode-'+i);if(el){el.innerHTML='';new QRCode(el,{text:qrTargetUrl(x.id),width:128,height:128,colorDark:'#10202b',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}})}function printQRLabels(){document.body.classList.add('qr-print');window.print();setTimeout(()=>document.body.classList.remove('qr-print'),800)}function openEquipmentFromQR(id){const x=data.find(z=>String(z.id)===String(id));if(!x){alert('No se encontró ese equipo en los datos cargados.');return}clearMainViews();setActiveNav('navEquip');openDrawer(x);selected.clear();selected.add(String(x.id));updateSelectionInfo();const b=document.getElementById('qrQuickMaint');if(b)b.style.display='inline-flex'}function registerMaintenanceFromQR(){const id=document.getElementById('id')?.value;if(!id)return;selected.clear();selected.add(String(id));updateSelectionInfo();closeDrawer();openMaintenance()}function handleEquipmentQR(){const params=new URLSearchParams(window.location.search);const id=params.get('equipo');if(!id)return;const x=data.find(z=>String(z.id)===String(id));if(!x){const warning=document.getElementById('loadWarning');if(warning){warning.style.display='block';warning.textContent='El QR indica el equipo '+id+', pero no aparece en la lista cargada. Verificá la conexión con Supabase.'}return}openEquipmentFromQR(id);const b=document.getElementById('qrQuickMaint');if(b)b.style.display='inline-flex'}
-function setActiveNav(id){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));const b=document.getElementById(id);if(b)b.classList.add('active')}function clearMainViews(){const m=document.querySelector('.main');if(m)m.classList.remove('reminders-view','history-view','inventory-view','qr-view','tech-tasks-view');const hp=document.getElementById('historyPanel');if(hp)hp.style.display='none';const ip=document.getElementById('inventoryPanel');if(ip)ip.style.display='none'}function openPending(){clearMainViews();const m=document.querySelector('.main');if(m)m.classList.add('reminders-view');setActiveNav('navPending');window.scrollTo({top:0,behavior:'smooth'});loadPendingItems()}
+function setActiveNav(id){document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));const b=document.getElementById(id);if(b)b.classList.add('active')}function clearMainViews(){const m=document.querySelector('.main');if(m)m.classList.remove('reminders-view','history-view','inventory-view','qr-view','tech-tasks-view','reports-view');const hp=document.getElementById('historyPanel');if(hp)hp.style.display='none';const ip=document.getElementById('inventoryPanel');if(ip)ip.style.display='none'}function openPending(){clearMainViews();const m=document.querySelector('.main');if(m)m.classList.add('reminders-view');setActiveNav('navPending');window.scrollTo({top:0,behavior:'smooth'});loadPendingItems()}
 function togglePendingForm(force){const f=document.getElementById('pendingForm');if(!f)return;const show=typeof force==='boolean'?force:f.style.display==='none';f.style.display=show?'block':'none';if(show){document.getElementById('pendingTitle').focus()}}
 async function loadPendingItems(){const box=document.getElementById('pendingList');const badge=document.getElementById('pendingBadge');if(!sb){if(box)box.innerHTML='<div class="detail">No hay conexión con Supabase.</div>';return}const {data:{session}}=await sb.auth.getSession();if(!session){if(box)box.innerHTML='<div class="detail">Iniciá sesión como técnico o administrador para consultar y cargar recordatorios.</div>';if(badge)badge.textContent='0';return}const {data:rows,error}=await sb.from('maintenance_pending_items').select('*').neq('status','resolved').order('created_at',{ascending:false}).limit(300);if(error){if(box)box.innerHTML='<div class="detail">No se pudieron cargar los recordatorios. Ejecutá el archivo SQL de recordatorios en Supabase. Detalle: '+esc(error.message)+'</div>';return}pendingItemsCache=rows||[];const open=pendingItemsCache;if(badge)badge.textContent=String(open.length);if(!box)return;if(!pendingItemsCache.length){box.innerHTML='<div class="empty">No hay recordatorios pendientes. Todo está al día. Los recordatorios marcados como resueltos se guardan en Supabase y ya no aparecen en esta lista.</div>';return}box.innerHTML=pendingItemsCache.map(x=>{const resolved=false;const pr=x.priority==='urgente'?'🔴 URGENTE':x.priority==='alta'?'🟠 ALTA':'NORMAL';return `<div class="approvalItem" style="${resolved?'opacity:.65;':''}"><div class="approvalTop"><div><b>${esc(x.title)}</b><div class="detail">${esc(x.category||'Pendiente')} · ${esc(x.equipment||'Sin equipo indicado')} · Cargado por ${esc(x.created_by_email||'usuario')}</div></div><span class="approvalBadge" style="${resolved?'background:#dcfce7;color:#166534;':x.priority==='urgente'?'background:#fee2e2;color:#b91c1c;':''}">${resolved?'RESUELTO':pr}</span></div>${x.details?`<div style="margin-top:8px;white-space:pre-wrap">${esc(x.details)}</div>`:''}<div class="detail" style="margin-top:7px">Fecha: ${esc((x.created_at||'').slice(0,10))}${x.resolution_note?' · Resolución: '+esc(x.resolution_note):''}</div>${isAdmin&&!resolved?`<div class="approvalActions"><button class="primary" type="button" onclick="resolvePendingItem(${Number(x.id)})">✓ Marcar resuelto</button></div>`:''}</div>`}).join('')}
 async function savePendingItem(){if(!sb){alert('No hay conexión con Supabase.');return}const {data:{session}}=await sb.auth.getSession();if(!session){alert('Iniciá sesión con tu cuenta de técnico o administrador para agregar un recordatorio.');openLogin();return}const title=document.getElementById('pendingTitle').value.trim();if(!title){alert('Escribí qué repuesto o tarea falta.');document.getElementById('pendingTitle').focus();return}const payload={title,equipment:document.getElementById('pendingEquipment').value.trim(),category:document.getElementById('pendingCategory').value,priority:document.getElementById('pendingPriority').value,details:document.getElementById('pendingDetails').value.trim(),status:'open',created_by_email:(session.user.email||'').toLowerCase()};const {error}=await sb.from('maintenance_pending_items').insert(payload);if(error){alert('No se pudo guardar el recordatorio: '+error.message+'\nVerificá que ejecutaste el SQL de recordatorios en Supabase.');return}document.getElementById('pendingTitle').value='';document.getElementById('pendingEquipment').value='';document.getElementById('pendingCategory').value='Repuesto sin stock';document.getElementById('pendingPriority').value='normal';document.getElementById('pendingDetails').value='';togglePendingForm(false);await loadPendingItems();toast('Recordatorio guardado para todos')}
@@ -660,4 +691,94 @@ table.table,
 }
 </style>
 
+
+<script id="maintenance-reports-module">
+let approvedReportsCache=[];
+function openReportsPage(){
+ if(!isAdmin){alert('Los informes están disponibles para administración.');return}
+ clearMainViews();
+ const main=document.querySelector('.main');
+ main?.classList.add('reports-view');
+ const panel=document.getElementById('reportsPanel');
+ if(panel)panel.style.display='block';
+ setActiveNav('navReports');
+ loadReports();
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function reportDateISO(value){
+ const v=String(value||'').trim();
+ if(/^\d{4}-\d{2}-\d{2}/.test(v))return v.slice(0,10);
+ const m=v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+ return m?`${m[3]}-${m[2]}-${m[1]}`:'';
+}
+function reportDateLabel(value){
+ const iso=reportDateISO(value);
+ if(!iso)return value||'Fecha no indicada';
+ const d=new Date(iso+'T12:00:00');
+ return isNaN(d)?value:d.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+}
+function reportMonthKey(r){
+ const date=reportDateISO(r.maintenance_date)||String(r.approved_at||r.created_at||'').slice(0,10);
+ return date&&/^\d{4}-\d{2}-\d{2}$/.test(date)?date.slice(0,7):'sin-fecha';
+}
+function reportMonthLabel(key){
+ if(key==='sin-fecha')return 'Fecha no indicada';
+ const [y,m]=key.split('-').map(Number);
+ return new Date(y,m-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+}
+async function loadReports(){
+
+ const out=document.getElementById('reportsContent');
+ if(!out)return;
+ if(!sb){out.innerHTML='<div class="historyEmpty">No hay conexión con Supabase.</div>';return}
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session||!isAdmin){out.innerHTML='<div class="historyEmpty">Iniciá sesión como administrador para consultar los informes.</div>';return}
+ out.innerHTML='<div class="historyEmpty">Consultando los mantenimientos aprobados…</div>';
+ const {data:rows,error}=await sb.from('maintenance_requests').select('*').eq('status','approved').order('maintenance_date',{ascending:false}).order('approved_at',{ascending:false}).limit(1000);
+ if(error){out.innerHTML='<div class="historyEmpty">No se pudieron cargar los informes: '+esc(error.message)+'</div>';return}
+ approvedReportsCache=rows||[];
+ renderReports();
+}
+function renderReports(){
+ const out=document.getElementById('reportsContent'),summary=document.getElementById('reportsSummary'),yearSel=document.getElementById('reportsYear');
+ if(!out)return;
+ const q=(document.getElementById('reportsSearch')?.value||'').trim().toLocaleLowerCase('es-AR');
+ const years=[...new Set(approvedReportsCache.map(r=>reportMonthKey(r)).filter(k=>k!=='sin-fecha').map(k=>k.slice(0,4)))].sort().reverse();
+ const previous=yearSel?.value||'all';
+ if(yearSel){yearSel.innerHTML='<option value="all">Todos los años</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');yearSel.value=years.includes(previous)||previous==='all'?previous:'all'}
+ const year=yearSel?.value||'all';
+ const filtered=approvedReportsCache.filter(r=>{
+  const ids=(r.equipment_ids||[]).map(String),tasks=r.equipment_tasks||{};
+  const equipmentText=ids.map(id=>{const x=data.find(e=>String(e.id)===id);return [x?.code,x?.place,x?.building,x?.section,x?.brand,x?.model,tasks[id]?.technicianNotes].join(' ')}).join(' ');
+  const hay=[r.technician,r.work,r.notes,r.maintenance_date,equipmentText].join(' ').toLocaleLowerCase('es-AR');
+  return (year==='all'||reportMonthKey(r).startsWith(year))&&(!q||hay.includes(q));
+ });
+ const monthGroups=new Map();
+ filtered.forEach(r=>{const key=reportMonthKey(r);if(!monthGroups.has(key))monthGroups.set(key,[]);monthGroups.get(key).push(r)});
+ const ordered=[...monthGroups.keys()].sort((a,b)=>b.localeCompare(a));
+ if(summary)summary.textContent=`${filtered.length} informe(s) aprobado(s) · ${filtered.reduce((n,r)=>n+(r.equipment_ids||[]).length,0)} equipos incluidos en los informes`;
+ if(!filtered.length){out.innerHTML='<div class="historyEmpty">Todavía no hay informes aprobados para este filtro. Cuando envíes una tarea, la apruebes y se cargue al historial de los equipos, también quedará registrada acá.</div>';return}
+ out.innerHTML=ordered.map(key=>{
+  const reports=monthGroups.get(key).slice().sort((a,b)=>String(reportDateISO(b.maintenance_date)||b.approved_at||b.created_at).localeCompare(String(reportDateISO(a.maintenance_date)||a.approved_at||a.created_at)));
+  const entries=reports.map(r=>{
+   const ids=(r.equipment_ids||[]),tasks=r.equipment_tasks||{};
+   const equipMarkup=ids.map(id=>{
+    const x=data.find(e=>String(e.id)===String(id)),t=tasks[id]||{};
+    const name=x?(x.code||'Equipo')+' · '+(x.place||'Ubicación sin indicar'):'Equipo '+id;
+    const flags=[];
+    if(t.beltChanged)flags.push('Cambio de correa'+(t.beltQuantity?' · cantidad: '+t.beltQuantity:''));
+    if(t.filterCleaned)flags.push('Limpieza de filtro');
+    if(t.filterReplaced)flags.push('Cambio de filtro'+(t.filterType?' · '+t.filterType:''));
+    const detail=[t.technicianNotes,t.notes,t.work,flags.join(' · ')].filter(Boolean).join('\n');
+    const photos=Array.isArray(t.photos)?t.photos:[];
+    return `<div class="reportEquip"><strong>${esc(name)}</strong>${x?`<div class="detail">${esc([x.building||x.section,x.brand,x.model,x.capacity].filter(Boolean).join(' · '))}</div>`:''}${detail?`<div class="detail">${esc(detail)}</div>`:''}${photos.length?`<div class="reportPhotos">${photos.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto ${i+1} del mantenimiento" loading="lazy"></a>`).join('')}</div>`:''}</div>`;
+   }).join('');
+   const sign=tasks.__plant_signature;
+   return `<article class="reportEntry"><div class="reportEntryHead"><div><div class="reportDate">📅 ${esc(reportDateLabel(r.maintenance_date))}</div><div class="reportMeta">Técnico: <b>${esc(r.technician||'No indicado')}</b> · ${esc(r.work||'Mantenimiento')} · ${ids.length} equipo(s)</div><div class="reportMeta">Aprobado: ${esc(r.approved_at?new Date(r.approved_at).toLocaleString('es-AR'):'Fecha no disponible')}</div></div><span class="reportStatus">APROBADO</span></div><div class="reportEquipList">${equipMarkup||'<div class="detail">El informe no contiene equipos detallados.</div>'}</div>${r.notes?`<div class="reportNotes"><b>Observaciones generales</b>\n${esc(r.notes)}</div>`:''}${sign?.name?`<div class="reportMeta" style="margin-top:9px">Conformidad de planta: ${esc(sign.name)}</div>`:''}</article>`;
+  }).join('');
+  return `<section class="reportMonth"><div class="reportMonthHead"><span>${esc(reportMonthLabel(key))}</span><span>${reports.length} informe(s)</span></div>${entries}</section>`;
+ }).join('');
+}
+</script>
+</script>
 </body></html>
