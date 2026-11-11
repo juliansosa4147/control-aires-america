@@ -320,8 +320,9 @@ async function applyNewSurveyReset(){
  if(btn){btn.disabled=true;btn.textContent='Aplicando…'}
  try{
   // First replace the shared equipment master list; stock tables are intentionally untouched.
-  const {error:stateError}=await sb.from('app_state').update({data:BASE,updated_at:new Date().toISOString()}).eq('id',1);
-  if(stateError)throw new Error('No se pudo actualizar el padrón compartido: '+stateError.message);
+  const {data:savedState,error:stateError}=await sb.from('app_state').upsert({id:1,data:BASE,updated_at:new Date().toISOString()},{onConflict:'id'}).select('id').single();
+  if(stateError)throw new Error('No se pudo guardar el padrón compartido: '+stateError.message);
+  if(!savedState||Number(savedState.id)!==1)throw new Error('Supabase no confirmó el guardado del padrón (app_state id=1).');
   const cleanup=[
    ['maintenance_requests','id'],
    ['maintenance_assignments','id'],
@@ -349,7 +350,7 @@ async function applyNewSurveyReset(){
  finally{if(btn){btn.disabled=false;btn.textContent='↻ Aplicar relevamiento nuevo'}}
 }
 async function loadSharedData(){const showBackup=(reason)=>{data=BASE.map(normalizeEquipment);render();setTimeout(handleEquipmentQR,250);const banner=document.getElementById('loadWarning');if(banner){banner.style.display='block';banner.textContent='⚠ No se pudo leer la lista compartida de Supabase ('+reason+'). Se muestran los '+BASE.length+' equipos base solo como respaldo. No guardes cambios hasta recuperar la conexión.'}return false};if(!sb)return showBackup('sin conexión');try{const {data:row,error}=await sb.from('app_state').select('data').eq('id',1).maybeSingle();if(error)return showBackup(error.message);if(!row||!Array.isArray(row.data)||row.data.length===0){return showBackup('la tabla app_state no tiene una lista cargada')}data=row.data.map(normalizeEquipment);await loadEquipmentPhotoRecords();$('search').value='';$('stateFilter').value='all';$('brandFilter').value='all';if($('buildingFilter'))$('buildingFilter').value='all';render();const banner=document.getElementById('loadWarning');if(banner)banner.style.display='none';setTimeout(handleEquipmentQR,250);if(isAdmin)loadMaintenanceRequests();return true}catch(e){return showBackup(e?.message||'error inesperado')}}
-async function save(){if(!requireAdmin()||!sb)return false;const {error}=await sb.from('app_state').update({data,updated_at:new Date().toISOString()}).eq('id',1);if(error){alert('No se pudo guardar en la base compartida: '+error.message);return false}return true}
+async function save(){if(!requireAdmin()||!sb)return false;const {data:savedState,error}=await sb.from('app_state').upsert({id:1,data,updated_at:new Date().toISOString()},{onConflict:'id'}).select('id').single();if(error){alert('No se pudo guardar en la base compartida: '+error.message);return false}if(!savedState||Number(savedState.id)!==1){alert('Supabase no confirmó el guardado. Los cambios no se consideran guardados.');return false}return true}
 function parseDate(d){if(!d)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(d))return new Date(d+'T00:00:00');const m=d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T00:00:00`):new Date(d)}
 function days(d){if(!d)return null;const x=parseDate(d);return x&&!isNaN(x)?Math.max(0,Math.floor((Date.now()-x)/86400000)):null}
 function state(x){if(x.condition==='fuera')return['off','FUERA DE SERVICIO'];const n=days(x.date);if(n===null)return['warn','SIN FECHA'];if(n<=30)return['ok','AL DÍA'];if(n<=60)return['warn','REVISIÓN'];return['late','ATRASADO']}
