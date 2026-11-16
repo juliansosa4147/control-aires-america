@@ -214,7 +214,7 @@ html,body{max-width:100%;overflow-x:hidden}
 const SUPABASE_URL='https://jqtocluuoxgtolqujoqb.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_6-YHMjRdUTkNFpe6rvH0xg_XUzBtNNJ';
 const ADMIN_EMAIL='juliansosa4147@gmail.com';
-const sb=(window.supabase&&SUPABASE_URL.startsWith('http')&&SUPABASE_ANON_KEY.length>20)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'sb-jqtocluuoxgtolqujoqb-auth-token'}}):null;
+const sb=(window.supabase&&SUPABASE_URL.startsWith('http')&&SUPABASE_ANON_KEY.length>20)?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,storageKey:'sb-jqtocluuoxgtolqujoqb-auth-token'}}):null;
 let isAdmin=false;let canUploadEquipmentPhotos=false;let equipmentPhotoRecords={};
 function openLogin(){document.getElementById('loginModal').classList.add('show');document.getElementById('loginMsg').textContent='';}
 function closeLogin(){document.getElementById('loginModal').classList.remove('show');}
@@ -693,7 +693,8 @@ function updateAuthGate(session){
     }else updateAuthGate(null);
   }catch(error){
     console.error('No se pudo verificar la sesión al mostrar el acceso:',error);
-    updateAuthGate(null);
+    /* No borrar visualmente una sesión por un fallo transitorio de lectura.
+       La inicialización principal y onAuthStateChange volverán a sincronizar el acceso. */
   }
 })();
 </script>
