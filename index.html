@@ -349,7 +349,36 @@ async function applyNewSurveyReset(){
  }catch(err){alert('No se pudo completar el reemplazo: '+(err?.message||err)+'\n\nRevisá la conexión y los permisos de administrador.');}
  finally{if(btn){btn.disabled=false;btn.textContent='↻ Aplicar relevamiento nuevo'}}
 }
-async function loadSharedData(){const showBackup=(reason)=>{data=BASE.map(normalizeEquipment);render();setTimeout(handleEquipmentQR,250);const banner=document.getElementById('loadWarning');if(banner){banner.style.display='block';banner.textContent='⚠ No se pudo leer la lista compartida de Supabase ('+reason+'). Se muestran los '+BASE.length+' equipos base solo como respaldo. No guardes cambios hasta recuperar la conexión.'}return false};if(!sb)return showBackup('sin conexión');try{const {data:row,error}=await sb.from('app_state').select('data').eq('id',1).maybeSingle();if(error)return showBackup(error.message);if(!row||!Array.isArray(row.data)||row.data.length===0){return showBackup('la tabla app_state no tiene una lista cargada')}data=row.data.map(normalizeEquipment);await loadEquipmentPhotoRecords();$('search').value='';$('stateFilter').value='all';$('brandFilter').value='all';if($('buildingFilter'))$('buildingFilter').value='all';render();const banner=document.getElementById('loadWarning');if(banner)banner.style.display='none';setTimeout(handleEquipmentQR,250);if(isAdmin)loadMaintenanceRequests();return true}catch(e){return showBackup(e?.message||'error inesperado')}}
+async function loadSharedData(){
+ const showBackup=(reason)=>{data=BASE.map(normalizeEquipment);render();setTimeout(handleEquipmentQR,250);const banner=document.getElementById('loadWarning');if(banner){banner.style.display='block';banner.textContent='⚠ No se pudo leer la lista compartida de Supabase ('+reason+'). Se muestran '+BASE.length+' equipos incluidos en este archivo como respaldo. No guardes cambios hasta resolver la conexión.'}return false};
+ if(!sb)return showBackup('sin conexión');
+ try{
+  let {data:row,error}=await sb.from('app_state').select('data').eq('id',1).maybeSingle();
+  if(error)return showBackup(error.message);
+  if(!row||!Array.isArray(row.data)||row.data.length===0){
+   if(!isAdmin)return showBackup('el padrón aún no fue inicializado por administración');
+   // INSERT, no UPSERT: si otro administrador inicializa a la vez, no pisa sus datos.
+   const seed=BASE.map(normalizeEquipment);
+   const ins=await sb.from('app_state').insert({id:1,data:seed,updated_at:new Date().toISOString()});
+   // Si hubo una carrera, volvemos a leer la fila existente; nunca la sobrescribimos.
+   const reread=await sb.from('app_state').select('data').eq('id',1).maybeSingle();
+   if(reread.error)return showBackup(reread.error.message);
+   if(!reread.data||!Array.isArray(reread.data.data)||reread.data.data.length===0){
+    return showBackup(ins.error?('no se pudo inicializar el padrón: '+ins.error.message):'Supabase no confirmó la inicialización');
+   }
+   row=reread.data;
+  }
+  data=row.data.map(normalizeEquipment);
+  await loadEquipmentPhotoRecords();
+  $('search').value='';$('stateFilter').value='all';$('brandFilter').value='all';
+  if($('buildingFilter'))$('buildingFilter').value='all';
+  render();
+  const banner=document.getElementById('loadWarning');if(banner)banner.style.display='none';
+  setTimeout(handleEquipmentQR,250);
+  if(isAdmin)loadMaintenanceRequests();
+  return true;
+ }catch(e){return showBackup(e?.message||'error inesperado')}
+}
 async function save(){if(!requireAdmin()||!sb)return false;const {data:savedState,error}=await sb.from('app_state').upsert({id:1,data,updated_at:new Date().toISOString()},{onConflict:'id'}).select('id').single();if(error){alert('No se pudo guardar en la base compartida: '+error.message);return false}if(!savedState||Number(savedState.id)!==1){alert('Supabase no confirmó el guardado. Los cambios no se consideran guardados.');return false}return true}
 function parseDate(d){if(!d)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(d))return new Date(d+'T00:00:00');const m=d.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T00:00:00`):new Date(d)}
 function days(d){if(!d)return null;const x=parseDate(d);return x&&!isNaN(x)?Math.max(0,Math.floor((Date.now()-x)/86400000)):null}
@@ -473,7 +502,9 @@ $('form').onsubmit=async e=>{e.preventDefault();if(!requireAdmin())return;const 
 async function deleteCurrent(){if(!requireAdmin())return;const id=$('id').value;if(!id)return;if(confirm('¿Eliminar este equipo? Esta acción no se puede deshacer.')){data=data.filter(x=>x.id!==id);if(await save()){closeDrawer();render();toast('Equipo eliminado')}}}
 function exportJSON(){if(!requireAdmin())return;const payload={app:'Control de Aires · América',version:6,exportedAt:new Date().toISOString(),data};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='control-aires-america-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Respaldo JSON exportado')}
 $('file').onchange=async e=>{if(!requireAdmin()){e.target.value='';return}const f=e.target.files[0];if(!f)return;try{const obj=JSON.parse(await f.text());const incoming=Array.isArray(obj)?obj:obj.data;if(!Array.isArray(incoming))throw Error('Formato inválido');if(confirm(`Se van a importar ${incoming.length} equipos y reemplazar los actuales. ¿Continuar?`)){data=incoming.map(normalizeEquipment);if(await save()){render();toast('Datos importados correctamente')}}}catch(err){alert('No se pudo importar el JSON. Verificá que sea un respaldo válido.')}e.target.value=''};
-function resetFilters(){$('search').value='';$('stateFilter').value='all';$('brandFilter').value='all';if($('buildingFilter'))$('buildingFilter').value='all';render()};function focusSearch(){clearMainViews();setActiveNav('navEquip');$('search').focus();$('search').scrollIntoView({behavior:'smooth',block:'center'})};function scrollTopApp(){clearMainViews();setActiveNav('navHome');$('top').scrollIntoView({behavior:'smooth'})};function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2200)};$('search').oninput=render;$('stateFilter').onchange=render;$('brandFilter').onchange=render;if($('buildingFilter'))$('buildingFilter').onchange=render;/* No cerrar paneles al tocar accidentalmente fuera del recuadro; usar X o Cancelar. */buildChecks();refreshAuthUI();loadSharedData();if(sb)sb.auth.onAuthStateChange(()=>setTimeout(async()=>{await refreshAuthUI();await loadMyAssignments();},0));
+function resetFilters(){$('search').value='';$('stateFilter').value='all';$('brandFilter').value='all';if($('buildingFilter'))$('buildingFilter').value='all';render()};function focusSearch(){clearMainViews();setActiveNav('navEquip');$('search').focus();$('search').scrollIntoView({behavior:'smooth',block:'center'})};function scrollTopApp(){clearMainViews();setActiveNav('navHome');$('top').scrollIntoView({behavior:'smooth'})};function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2200)};$('search').oninput=render;$('stateFilter').onchange=render;$('brandFilter').onchange=render;if($('buildingFilter'))$('buildingFilter').onchange=render;/* No cerrar paneles al tocar accidentalmente fuera del recuadro; usar X o Cancelar. */buildChecks();
+(async()=>{await refreshAuthUI();await loadSharedData();})();
+if(sb)sb.auth.onAuthStateChange(()=>setTimeout(async()=>{await refreshAuthUI();await loadSharedData();await loadMyAssignments();},0));
 </script><script>
 // Módulo de inventario compartido en Supabase. Requiere ejecutar el SQL adjunto una vez.
 let stockItems=[];let stockReady=false;
